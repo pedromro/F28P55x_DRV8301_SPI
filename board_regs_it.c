@@ -99,14 +99,33 @@ void Board_initSPIA_IT(uint32_t bitrate_hz)
 
 void Board_initCPUTimer0_100ms(void)
 {
-    InitCpuTimers();
-    ConfigCpuTimer(&CpuTimer0, 200, 100000.0); // 100 ms at 200 MHz
+    // Map timer ISR
     EALLOW;
     PieVectTable.TIMER0_INT = &cpuTimer0ISR;
     EDIS;
+
+    // Enable PIE and CPU interrupt for Group 1 / INTx7
+    PieCtrlRegs.PIECTRL.bit.ENPIE = 1;
     PieCtrlRegs.PIEIER1.bit.INTx7 = 1;
     IER |= M_INT1;
-    CpuTimer0Regs.TCR.bit.TSS = 0; // start
+
+    // Configure CPU Timer0 directly for 100 ms @ CPU_HZ
+    // Period = (PRD + 1) / CPUCLK  => PRD = CPU_HZ * 0.1 - 1
+    // Prescaler = 1
+    EALLOW;
+    CpuTimer0Regs.TPR.all  = 0;
+    CpuTimer0Regs.TPRH.all = 0;
+    CpuTimer0Regs.PRD.all  = (uint32_t)(CPU_HZ / 10U) - 1U; // 100 ms
+    CpuTimer0Regs.TCR.bit.TSS  = 1;  // stop
+    CpuTimer0Regs.TCR.bit.TRB  = 1;  // reload
+    CpuTimer0Regs.TCR.bit.TIF  = 1;  // clear flag
+    CpuTimer0Regs.TCR.bit.TIE  = 1;  // enable interrupt
+    CpuTimer0Regs.TCR.bit.FREE = 1;  // free-run in emulation
+    CpuTimer0Regs.TCR.bit.TSS  = 0;  // start
+    EDIS;
+
+    EINT;
+    ERTM;
 }
 
 void Board_delay_us(uint32_t us)

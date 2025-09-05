@@ -12,6 +12,7 @@
 
 #ifndef LSPCLK_HZ
 #define LSPCLK_HZ   50000000UL // Typical when CPU=200 MHz
+#define CPU_HZ 200000000UL // CPU frequency
 #endif
 
 // -------- Init API --------
